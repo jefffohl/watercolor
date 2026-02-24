@@ -1,5 +1,6 @@
 /**
  *  Art is a constant process of inventing ways to escape the restrictions of past inventions.
+ *  Thanks to Tyler Hobbs: https://www.tylerxhobbs.com/words/a-guide-to-simulating-watercolor-paint-with-generative-art
  */
 
 // types
@@ -23,7 +24,7 @@ class WaterColorAnimator {
     }
   }
 
-  private gaussianRandom(mean: number, stdDev: number) {
+  private gaussianRandom(mean: number, sd: number) {
     const u1 = Math.random();
     const u2 = Math.random();
 
@@ -31,7 +32,7 @@ class WaterColorAnimator {
     const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
 
     // Scale to mean and standard deviation
-    return z0 * stdDev + mean;
+    return z0 * sd + mean;
   }
 
   /**
@@ -117,20 +118,6 @@ class WaterColorAnimator {
     return deformedPolygon;
   }
 
-  private createLayer(
-    polygon: Polygon,
-    layers: number,
-    deviation: number,
-  ): Polygon[] {
-    const layer: Polygon[] = [];
-    let poly = polygon;
-    for (let i = 0; i < layers; i++) {
-      poly = this.deformPolygon(poly, deviation);
-      layer.push(poly);
-    }
-    return layer;
-  }
-
   /**
    * Draw a polygon, from a given center coordinate,
    * and radius. Returns the polygon's coordinates
@@ -167,7 +154,7 @@ class WaterColorAnimator {
   public start() {
     // create a random number of polygons:
     let radius = Math.round(Math.random() * 500);
-    let facets = Math.round(Math.random() * 50);
+    let facets = Math.round(Math.random() * 10);
     if (facets < 5) {
       facets = 5;
     }
@@ -178,11 +165,12 @@ class WaterColorAnimator {
     const r = Math.round(Math.random() * 256);
     const g = Math.round(Math.random() * 256);
     const b = Math.round(Math.random() * 256);
-    const color = `rgba(${r},${g},${b},0.05)`;
+    const color = `rgba(${r},${g},${b},0.025)`;
 
     const poly = this.createPolygon({ x, y }, radius, facets);
-    const deformedPoly = this.deformPolygon(poly, 4);
-    const numberOfLayers = 50;
+    const deformedPoly = this.deformPolygon(poly, radius / 3);
+    // this.drawPolygon(deformedPoly, color);
+    const numberOfLayers = 85;
     let iteration = 0;
     let self = this;
     let timer: number;
@@ -190,7 +178,7 @@ class WaterColorAnimator {
     function draw() {
       iteration++;
       self.drawPolygon(
-        self.iterativelyDeformPolygon(deformedPoly, radius / 10, 4),
+        self.iterativelyDeformPolygon(deformedPoly, radius / 3, 5),
         color,
       );
       timer = setTimeout(() => {
@@ -202,7 +190,7 @@ class WaterColorAnimator {
           }
           self.start();
         }
-      }, 5);
+      }, 20);
     }
     draw();
   }
