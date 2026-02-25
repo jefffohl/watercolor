@@ -4,8 +4,8 @@
  */
 
 // types
-
-type Polygon = { x: number; y: number }[];
+type Point = { x: number; y: number; variance: number };
+type Polygon = Point[];
 
 class WaterColorAnimator {
   private context: CanvasRenderingContext2D | null = null;
@@ -38,7 +38,7 @@ class WaterColorAnimator {
   /**
    * Deform a polygon
    */
-  private deformPolygon(polygon: Polygon, deviation: number): Polygon {
+  private deformPolygon(polygon: Polygon, radius: number): Polygon {
     // It's pretty simple, and it goes something like this:
     // For each line A -> C in the polygon, find the midpoint, B. From a Gaussian distribution centered on B, pick a new point B'.
     // get B:
@@ -48,19 +48,24 @@ class WaterColorAnimator {
       if (!pointA) {
         continue;
       }
-      const A = { x: pointA.x, y: pointA.y };
+      const A = { x: pointA.x, y: pointA.y, variance: pointA.variance };
       const n: number = (i + 1) % polygon.length;
       const pointC = polygon[n];
       if (!pointC) {
         continue;
       }
-      const C = { x: pointC.x, y: pointC.y };
+      const C = { x: pointC.x, y: pointC.y, variance: pointC.variance };
       if (!A || !C) {
         continue;
       }
+      const variance = this.gaussianRandom(
+        (A.variance + C.variance) / 2,
+        radius / 20,
+      );
       const B = {
-        x: this.gaussianRandom((A.x + C.x) / 2, deviation),
-        y: this.gaussianRandom((A.y + C.y) / 2, deviation),
+        x: this.gaussianRandom((A.x + C.x) / 2, variance),
+        y: this.gaussianRandom((A.y + C.y) / 2, variance),
+        variance,
       };
       newPoly.push(A, B, C);
     }
@@ -87,7 +92,7 @@ class WaterColorAnimator {
     // y = k + (r*sin(theta))
     const base_angle = (Math.PI * 2) / facets;
 
-    const points: { x: number; y: number }[] = [];
+    const points: Point[] = [];
 
     for (let i = 0; i < facets; i++) {
       const angle = base_angle * i;
@@ -99,8 +104,10 @@ class WaterColorAnimator {
       if (x < 0) x = 0; // if the coordinate goes off the edge, just keep it on the edge
       let y = Math.round(coordinates.y + radius * Math.sin(angle));
 
+      let variance = Math.random() * (radius / 3);
+
       if (y < 0) y = 0;
-      points.push({ x, y });
+      points.push({ x, y, variance });
     }
 
     return points;
@@ -108,12 +115,12 @@ class WaterColorAnimator {
 
   private iterativelyDeformPolygon(
     polygon: Polygon,
-    deviation: number,
+    radius: number,
     iterations: number,
   ): Polygon {
     let deformedPolygon = polygon;
     for (let i = 0; i < iterations; i++) {
-      deformedPolygon = this.deformPolygon(deformedPolygon, deviation);
+      deformedPolygon = this.deformPolygon(deformedPolygon, radius);
     }
     return deformedPolygon;
   }
@@ -168,8 +175,7 @@ class WaterColorAnimator {
     const color = `rgba(${r},${g},${b},0.025)`;
 
     const poly = this.createPolygon({ x, y }, radius, facets);
-    const deformedPoly = this.deformPolygon(poly, radius / 3);
-    // this.drawPolygon(deformedPoly, color);
+    const deformedPoly = this.deformPolygon(poly, radius);
     const numberOfLayers = 85;
     let iteration = 0;
     let self = this;
@@ -178,7 +184,7 @@ class WaterColorAnimator {
     function draw() {
       iteration++;
       self.drawPolygon(
-        self.iterativelyDeformPolygon(deformedPoly, radius / 3, 5),
+        self.iterativelyDeformPolygon(deformedPoly, radius, 5),
         color,
       );
       timer = setTimeout(() => {
@@ -190,7 +196,7 @@ class WaterColorAnimator {
           }
           self.start();
         }
-      }, 20);
+      }, 10);
     }
     draw();
   }
